@@ -6,18 +6,21 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import warnings
 from io import BytesIO
+from fpdf import FPDF # Nový import
 
 # --- Konfigurace a názvy souborů ---
 FILE_T = "mly-0-20000-0-11723-T.csv"
 FILE_F = "mly-0-20000-0-11723-F.csv"
 FILE_SRA = "mly-0-20000-0-11723-SRA.csv"
+FONT_FILE = "DejaVuSans.ttf" # Soubor s fontem pro češtinu
 
 # Ignorování varování
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
-# --- Definice Funkcí ---
+# --- Funkce pro zpracování dat (beze změny) ---
 
+@st.cache_data
 def nacti_a_filtruj_data_z_cesty(filepath, time_func, md_func, nova_value_col):
     """Načte CSV z cesty (filename) a vyfiltruje potřebné řádky."""
     try:
@@ -44,7 +47,6 @@ def nacti_a_filtruj_data_z_cesty(filepath, time_func, md_func, nova_value_col):
 def zpracuj_data_z_githubu():
     """Hlavní funkce pro zpracování dat a trénink modelu."""
     with st.spinner("Načítám a zpracovávám data z GitHub repozitáře..."):
-        # 1. Načtení a filtrace
         df_temp = nacti_a_filtruj_data_z_cesty(FILE_T, 'AVG', 'AVG', 't_avg')
         df_wind = nacti_a_filtruj_data_z_cesty(FILE_F, 'AVG', 'AVG', 'wspd_avg')
         df_precip = nacti_a_filtruj_data_z_cesty(FILE_SRA, '07:00', 'SUM', 'prcp_sum')
@@ -52,7 +54,6 @@ def zpracuj_data_z_githubu():
         if df_temp is None or df_wind is None or df_precip is None:
             return None, None, None, None
 
-        # 2. Spojení a roční agregace
         df_monthly = pd.merge(df_temp, df_wind, on=['YEAR', 'MONTH'], how='outer')
         df_monthly = pd.merge(df_monthly, df_precip, on=['YEAR', 'MONTH'], how='outer')
 
@@ -70,7 +71,6 @@ def zpracuj_data_z_githubu():
             st.error("Po filtraci na kompletní roky nezbyla žádná data.")
             return None, None, None, None
 
-        # 3. Modelování
         variables = ['tavg', 'wspd', 'prcp']
         models = {}
         results = {}
@@ -87,49 +87,151 @@ def zpracuj_data_z_githubu():
         st.success("Data úspěšně načtena a modely natrénovány.")
         return data_yearly, results, models, df_monthly
 
-def create_plot(var, info, data_yearly, df_predictions, results):
-    """Vytvoří Matplotlib graf pro danou proměnnou."""
-    fig, ax = plt.subplots(figsize=(10, 6))
+# --- Funkce pro generování PDF (NOVÁ ČÁST) ---
+
+def create_plot_for_pdf(var, info, data_yearly, df_predictions, results):
+    """Vytvoří Matplotlib graf, ale nevrátí fig, ale buffer s obrázkem."""
+    fig, ax = plt.subplots(figsize=(10, 6)) # cca 190mm / 25.4 * 2.5 = 7.5 palců
     
-    # Historická data
-    ax.scatter(data_yearly['YEAR'], data_yearly[var], label=f'Skutečná roční data ({var})', alpha=0.7)
-    
-    # Regresní přímka (trend)
+    ax.scatter(data_yearly['YEAR'], data_yearly[var], label=f'Skutečná roční data ({var})', alpha=0.7, s=10) # menší tečky
     ax.plot(data_yearly['YEAR'], data_yearly[f'{var}_trend'], color='red', linestyle='--', label=f'Lineární trend ({results[var]["slope"]:.4f} {info["unit"]}/rok)')
     
-    # Spojnice k predikcím
     last_year_data = data_yearly['YEAR'].max()
     last_val_data = data_yearly.loc[data_yearly['YEAR'] == last_year_data, f'{var}_trend'].values[0]
-    
     first_pred_year = df_predictions.index.min()
     first_pred_val = df_predictions.loc[first_pred_year, f'pred_{var}']
     
     ax.plot([last_year_data, first_pred_year], [last_val_data, first_pred_val], color='red', linestyle=':', label='Extrapolace')
+    ax.plot(df_predictions.index, df_predictions[f'pred_{var}'], color='red', marker='o', linestyle=':', markersize=5)
     
-    # Budoucí predikce
-    ax.plot(df_predictions.index, df_predictions[f'pred_{var}'], color='red', marker='o', linestyle=':', markersize=8)
-    
-    # Popisky
     ax.set_title(f'Historický vývoj a lineární extrapolace - {info["label"]} (Brno)')
     ax.set_xlabel('Rok')
     ax.set_ylabel(f'{info["label"]} ({info["unit"]})')
     ax.legend()
     ax.grid(True)
     
-    return fig
+    # Uložení grafu do paměti (BytesIO buffer)
+    img_buffer = BytesIO()
+    fig.savefig(img_buffer, format='png', dpi=300, bbox_inches='tight')
+    plt.close(fig) # Zavření figury pro úsporu paměti
+    img_buffer.seek(0)
+    return img_buffer
 
-def to_excel(df_monthly, data_yearly, df_predictions, results):
-    """Vytvoří Excel soubor v paměti."""
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_monthly.to_excel(writer, sheet_name='Měsíční_Data_Raw_Filtered', index=False)
-        data_yearly.to_excel(writer, sheet_name='Agregovaná_Roční_Data', index=False)
-        df_predictions.to_excel(writer, sheet_name='Predikce_Scénáře', index=True)
-        df_results = pd.DataFrame(results).T
-        df_results.to_excel(writer, sheet_name='Parametry_Modelu')
+def generate_pdf_report(data_yearly, results, models, df_predictions, variables_to_plot):
+    """Sestaví kompletní PDF report."""
     
-    output.seek(0)
-    return output.getvalue()
+    try:
+        pdf = FPDF(orientation='P', unit='mm', format='A4')
+        
+        # Přidání českého fontu (musí být v repozitáři!)
+        pdf.add_font('DejaVu', '', FONT_FILE, uni=True)
+        pdf.set_font('DejaVu', '', 10)
+        
+        # --- Stránka 1: Titulní strana, Metodika, Interpretace ---
+        pdf.add_page()
+        pdf.set_font('DejaVu', 'B', 16)
+        pdf.cell(0, 10, 'Analýza a predikce klimatu: Brno (stanice 11723)', 0, 1, 'C')
+        pdf.ln(10)
+
+        # Metodika
+        pdf.set_font('DejaVu', 'B', 12)
+        pdf.cell(0, 10, '1. Metodika zpracování', 0, 1)
+        pdf.set_font('DejaVu', '', 10)
+        pdf.multi_cell(0, 5, 
+            "Data byla načtena z poskytnutých CSV souborů (T, F, SRA). Pro každou veličinu (teplota, vítr, srážky) "
+            "byla vyfiltrována relevantní měsíční data (průměrná teplota, průměrná rychlost větru, suma srážek). "
+            "Tato data byla následně agregována na roční bázi (průměry pro T a F, suma pro SRA). Zahrnuty byly "
+            "pouze kompletní roky s 12 měsíčními záznamy, aby se předešlo zkreslení.\n"
+            "Pro kvantifikaci trendu byla použita metoda lineární regrese, kde nezávislou proměnnou byl rok. "
+            "Tento model byl následně použit pro extrapolaci scénářů do budoucnosti."
+        )
+        pdf.ln(5)
+
+        # Interpretace a Omezení
+        pdf.set_font('DejaVu', 'B', 12)
+        pdf.cell(0, 10, '2. Interpretace a Omezení (Kritické)', 0, 1)
+        pdf.set_font('DejaVu', 'B', 10)
+        pdf.multi_cell(0, 5, 
+            "Je absolutně klíčové chápat, že tento model NENÍ reálnou klimatickou predikcí, ale pouhou lineární extrapolací."
+        )
+        pdf.set_font('DejaVu', '', 10)
+        pdf.multi_cell(0, 5,
+            "Hlavní omezení jsou:\n"
+            " - Lineární model: Klima je komplexní, nelineární systém. Předpoklad, že trend z posledních 60 let bude lineárně pokračovat dalších 1000 let, je statisticky platný, ale věcně téměř jistě nesprávný.\n"
+            " - Fyzikální ignorance: Model neobsahuje žádnou fyziku klimatu (vliv CO2, oceánské proudy, body zvratu). Je to čistě statistické 'protahování čáry'.\n"
+            " - Horizont extrapolace: Zatímco predikce na 10 let je nejistý odhad, predikce na 100 let je spíše cvičení a predikce na 1000 let je fikce. Slouží k demonstraci absurdit dlouhodobé lineární extrapolace.\n"
+            " - Lokální vlivy: Data z jedné stanice mohou být ovlivněna např. 'městským tepelným ostrovem', který zkresluje globální klimatický signál.\n\n"
+            "Závěr: Výsledky (zejména na 100 a 1000 let) nelze brát jako předpověď, ale jako ukázku toho, co by se stalo, kdyby se svět řídil jen jednoduchým pravítkem."
+        )
+        
+        # --- Stránka 2: Výsledky (tabulky) ---
+        pdf.add_page()
+        pdf.set_font('DejaVu', 'B', 12)
+        pdf.cell(0, 10, '3. Kvantifikované výsledky', 0, 1)
+        pdf.ln(5)
+
+        # Tabulka 1: Sklony přímek
+        pdf.set_font('DejaVu', 'B', 11)
+        pdf.cell(0, 10, 'Vypočtené trendy (sklony regresní přímky)', 0, 1)
+        pdf.set_font('DejaVu', '', 10)
+        pdf.cell(60, 7, 'Veličina', 1, 0)
+        pdf.cell(60, 7, 'Trend (jednotka/rok)', 1, 1)
+        
+        pdf.cell(60, 7, 'Průměrná teplota', 1, 0)
+        pdf.cell(60, 7, f"{results['tavg']['slope']:.4f} °C / rok", 1, 1)
+        
+        pdf.cell(60, 7, 'Průměrný vítr', 1, 0)
+        pdf.cell(60, 7, f"{results['wspd']['slope']:.4f} m/s / rok", 1, 1)
+        
+        pdf.cell(60, 7, 'Roční srážky', 1, 0)
+        pdf.cell(60, 7, f"{results['prcp']['slope']:.4f} mm / rok", 1, 1)
+        pdf.ln(10)
+
+        # Tabulka 2: Predikce
+        pdf.set_font('DejaVu', 'B', 11)
+        pdf.cell(0, 10, 'Extrapolované scénáře (zaokrouhleno)', 0, 1)
+        
+        # Hlavička tabulky
+        pdf.set_font('DejaVu', 'B', 10)
+        col_width = 45 # Šířka sloupce
+        pdf.cell(col_width, 7, 'Rok', 1, 0, 'C')
+        pdf.cell(col_width, 7, 'Teplota (°C)', 1, 0, 'C')
+        pdf.cell(col_width, 7, 'Vítr (m/s)', 1, 0, 'C')
+        pdf.cell(col_width, 7, 'Srážky (mm)', 1, 1, 'C')
+
+        # Data tabulky
+        pdf.set_font('DejaVu', '', 10)
+        for year, row in df_predictions.iterrows():
+            pdf.cell(col_width, 7, str(year), 1, 0, 'C')
+            pdf.cell(col_width, 7, f"{row['pred_tavg']:.1f}", 1, 0, 'C')
+            pdf.cell(col_width, 7, f"{row['pred_wspd']:.1f}", 1, 0, 'C')
+            pdf.cell(col_width, 7, f"{row['pred_prcp']:.0f}", 1, 1, 'C')
+        
+        # --- Další stránky: Grafy ---
+        for var, info in variables_to_plot.items():
+            pdf.add_page()
+            pdf.set_font('DejaVu', 'B', 12)
+            pdf.cell(0, 10, f"4. Graf: {info['label']}", 0, 1)
+            pdf.ln(5)
+            
+            # Vygenerování grafu do bufferu
+            img_buffer = create_plot_for_pdf(var, info, data_yearly, df_predictions, results)
+            
+            # Vložení obrázku do PDF
+            # w=190mm je šířka téměř na celou A4
+            pdf.image(img_buffer, x=10, y=None, w=190)
+            img_buffer.close()
+
+        # Návrat PDF dat
+        return pdf.output()
+
+    except FileNotFoundError as e:
+        st.error(f"Kritická chyba PDF: Soubor s fontem `{FONT_FILE}` nenalezen! Prosím, nahrajte jej do repozitáře.")
+        st.error(e)
+        return None
+    except Exception as e:
+        st.error(f"Došlo k chybě při generování PDF: {e}")
+        return None
 
 # --- Rozhraní Aplikace Streamlit ---
 
@@ -137,13 +239,12 @@ st.set_page_config(layout="wide", page_title="Prediktor Klimatu Brno")
 st.title("Analýza a predikce klimatu - Brno (stanice 11723)")
 st.caption("Tento nástroj provádí lineární regresi na historických datech a extrapoluje trendy do budoucnosti. Slouží jako demonstrace metody a jejích omezení.")
 
-# --- Zpracování dat (volá se automaticky) ---
+# Zpracování dat (volá se automaticky)
 data_yearly, results, models, df_monthly = zpracuj_data_z_githubu()
 
-# --- Hlavní část aplikace (zobrazí se, jen když data OK) ---
+# Hlavní část aplikace (zobrazí se, jen když data OK)
 if data_yearly is not None:
     
-    # --- Postranní panel pro interaktivitu ---
     st.sidebar.header("Parametry modelu")
     st.sidebar.write("Vypočtený sklon trendu (jednotek/rok):")
     st.sidebar.json({
@@ -153,7 +254,7 @@ if data_yearly is not None:
     })
     
     st.sidebar.header("Horizonty predikce")
-    st.sidebar.info("Zvolte roky pro extrapolaci.")
+    st.sidebar.info("Zvolte roky pro extrapolaci (zobrazí se v tabulce i PDF).")
     current_year = datetime.now().year
     
     h1 = st.sidebar.slider("Horizont 1 (roky od teď)", 1, 50, 10)
@@ -162,7 +263,7 @@ if data_yearly is not None:
     
     horizons_years = [current_year + h1, current_year + h2, current_year + h3]
     
-    # --- Dynamická predikce ---
+    # Dynamická predikce
     predictions = {}
     for var, model in models.items():
         future_years = np.array(horizons_years).reshape(-1, 1)
@@ -171,56 +272,44 @@ if data_yearly is not None:
 
     df_predictions = pd.DataFrame(predictions, index=horizons_years)
     df_predictions.index.name = 'Year'
-    df_predictions = df_predictions.round(2)
+    df_predictions_rounded = df_predictions.round(2)
 
     st.header("Interaktivní predikce / Scénáře")
-    st.dataframe(df_predictions, use_container_width=True)
+    st.dataframe(df_predictions_rounded, use_container_width=True)
     st.warning("Pamatujte: Predikce na 100 a 1000 let jsou čistě hypotetická lineární extrapolace a nedávají reálný vědecký smysl. Slouží k demonstraci limitů metody.")
 
-    # --- Definice proměnných pro grafy ---
+    # Definice proměnných pro grafy
     variables_to_plot = {
         'tavg': {'unit': '°C', 'label': 'Průměrná teplota'},
         'wspd': {'unit': 'm/s', 'label': 'Průměrná rychlost větru'},
         'prcp': {'unit': 'mm', 'label': 'Celkové roční srážky'}
     }
 
-    # --- Vykreslení grafů v záložkách ---
-    tab_t, tab_w, tab_p = st.tabs(["Graf Teplota", "Graf Vítr", "Graf Srážky"])
-
-    with tab_t:
-        st.subheader("Vývoj a extrapolace průměrné roční teploty")
-        fig_t = create_plot('tavg', variables_to_plot['tavg'], data_yearly, df_predictions, results)
-        st.pyplot(fig_t)
-
-    with tab_w:
-        st.subheader("Vývoj a extrapolace průměrné roční rychlosti větru")
-        fig_w = create_plot('wspd', variables_to_plot['wspd'], data_yearly, df_predictions, results)
-        st.pyplot(fig_w)
-
-    with tab_p:
-        st.subheader("Vývoj a extrapolace celkových ročních srážek")
-        fig_p = create_plot('prcp', variables_to_plot['prcp'], data_yearly, df_predictions, results)
-        st.pyplot(fig_p)
+    # Zobrazíme v appce jen jeden graf pro ukázku, všechny budou v PDF
+    st.subheader("Ukázkový graf (všechny budou v PDF)")
+    with st.spinner("Generuji ukázkový graf teploty..."):
+        # Pro zobrazení ve Streamlit použijeme starou funkci
+        fig_t = create_plot_for_pdf('tavg', variables_to_plot['tavg'], data_yearly, df_predictions, results)
+        st.image(fig_t, caption="Vývoj a extrapolace průměrné roční teploty", use_column_width=True)
         
-    # --- Zobrazení dat a download ---
     st.divider()
-    st.header("Výstupní data")
+    st.header("Generování PDF výstupu")
     
-    # Vytvoření Excelu v paměti
-    excel_data = to_excel(df_monthly, data_yearly, df_predictions, results)
-    
-    st.download_button(
-        label="Stáhnout kompletní výstup jako Excel",
-        data=excel_data,
-        file_name=f"vystup_brno_pocasi_{current_year}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    
-    with st.expander("Zobrazit zpracovaná roční data (agregovaná)"):
-        st.dataframe(data_yearly, use_container_width=True)
-        
-    with st.expander("Zobrazit měsíční data (filtrovaná, před agregací)"):
-        st.dataframe(df_monthly, use_container_width=True)
+    # Generování PDF (až když uživatel klikne)
+    with st.spinner("Připravuji data pro PDF..."):
+        # Předgenerování dat pro tlačítko
+        pdf_data = generate_pdf_report(data_yearly, results, models, df_predictions, variables_to_plot)
+
+    if pdf_data:
+        st.download_button(
+            label="Stáhnout kompletní zprávu jako PDF",
+            data=pdf_data,
+            file_name=f"report_klima_brno_{current_year}.pdf",
+            mime="application/pdf"
+        )
+        st.success("PDF připraveno ke stažení!")
+    else:
+        st.error("Nepodařilo se vygenerovat PDF. Zkontrolujte logy aplikace a ujistěte se, že soubor s fontem je přítomen.")
 
 else:
     st.info("Čekání na data... Pokud se nic neděje, zkontrolujte chybové hlášky výše.")
