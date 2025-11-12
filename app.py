@@ -20,7 +20,7 @@ FONT_BOLD_FILE = "DejaVuSans-Bold.ttf"
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
-# --- Funkce pro zpracování dat ---
+# --- Funkce pro zpracování dat (beze změny) ---
 
 @st.cache_data
 def nacti_a_filtruj_data_z_cesty(filepath, time_func, md_func, nova_value_col):
@@ -89,7 +89,7 @@ def zpracuj_data_z_githubu():
         st.success("Data úspěšně načtena a modely natrénovány.")
         return data_yearly, results, models, df_monthly
 
-# --- Funkce pro generování PDF (ČISTÁ VERZE "OD NULY") ---
+# --- Funkce pro generování PDF ---
 
 def create_plot_for_pdf(var, info, data_yearly, df_predictions, results):
     """Vytvoří Matplotlib graf a vrátí ho jako buffer v paměti."""
@@ -112,7 +112,6 @@ def create_plot_for_pdf(var, info, data_yearly, df_predictions, results):
     ax.legend()
     ax.grid(True)
     
-    # Uložení do bufferu v paměti
     img_buffer = BytesIO()
     fig.savefig(img_buffer, format='png', dpi=300, bbox_inches='tight')
     plt.close(fig) 
@@ -121,10 +120,10 @@ def create_plot_for_pdf(var, info, data_yearly, df_predictions, results):
 
 def generate_pdf_report(data_yearly, results, models, df_predictions, variables_to_plot):
     """
-    Sestaví kompletní PDF report od nuly s použitím správných metod.
+    Sestaví kompletní PDF report.
+    Tentokrát s použitím `ln=1` pro správné posouvání řádků.
     """
     
-    # Kontrola, zda existují soubory s fonty
     if not os.path.isfile(FONT_FILE) or not os.path.isfile(FONT_BOLD_FILE):
         st.error(f"Kritická chyba PDF: Chybí soubor `{FONT_FILE}` nebo `{FONT_BOLD_FILE}`! Nahrajte je prosím na GitHub.")
         return None
@@ -132,67 +131,75 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
     try:
         pdf = FPDF(orientation='P', unit='mm', format='A4')
         
-        # Registrace obou fontů (běžný + tučný)
         pdf.add_font('DejaVu', '', FONT_FILE, uni=True)
         pdf.add_font('DejaVu', 'B', FONT_BOLD_FILE, uni=True)
         
         # --- Stránka 1: Úvod a Metodika ---
         pdf.add_page()
-        # Efektivní šířka = šířka stránky (210mm) - 2x okraj (default 10mm)
         effective_width = pdf.w - pdf.l_margin - pdf.r_margin 
         
         # Titulek
         pdf.set_font('DejaVu', 'B', 16)
-        pdf.multi_cell(effective_width, 10, 'Analýza a predikce klimatu: Brno (stanice 11723)', 0, 'C')
-        pdf.ln(10) # Prázdný řádek
+        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
+        pdf.multi_cell(effective_width, 10, 'Analýza a predikce klimatu: Brno (stanice 11723)', 0, 'C', ln=1)
+        pdf.ln(10) # Prázdný řádek pro odsazení
 
         # Metodika
         pdf.set_font('DejaVu', 'B', 12)
-        pdf.multi_cell(effective_width, 10, '1. Metodika zpracování', 0, 'L')
+        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
+        pdf.multi_cell(effective_width, 10, '1. Metodika zpracování', 0, 'L', ln=1)
         pdf.set_font('DejaVu', '', 10)
+        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
         pdf.multi_cell(effective_width, 5, 
             "Data byla načtena z poskytnutých CSV souborů (T, F, SRA). Pro každou veličinu (teplota, vítr, srážky) "
             "byla vyfiltrována relevantní měsíční data (průměrná teplota, průměrná rychlost větru, suma srážek). "
             "Tato data byla následně agregována na roční bázi (průměry pro T a F, suma pro SRA). Zahrnuty byly "
             "pouze kompletní roky s 12 měsíčními záznamy, aby se předešlo zkreslení.\n"
             "Pro kvantifikaci trendu byla použita metoda lineární regrese, kde nezávislou proměnnou byl rok. "
-            "Tento model byl následně použit pro extrapolaci scénářů do budoucnosti."
+            "Tento model byl následně použit pro extrapolaci scénářů do budoucnosti.",
+            0, 'L', ln=1
         )
         pdf.ln(5)
 
         # Interpretace a Omezení
         pdf.set_font('DejaVu', 'B', 12)
-        pdf.multi_cell(effective_width, 10, '2. Interpretace a Omezení (Kritické)', 0, 'L')
+        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
+        pdf.multi_cell(effective_width, 10, '2. Interpretace a Omezení (Kritické)', 0, 'L', ln=1)
         pdf.set_font('DejaVu', 'B', 10)
+        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
         pdf.multi_cell(effective_width, 5, 
-            "Je absolutně klíčové chápat, že tento model NENÍ reálnou klimatickou predikcí, ale pouhou lineární extrapolací."
+            "Je absolutně klíčové chápat, že tento model NENÍ reálnou klimatickou predikcí, ale pouhou lineární extrapolací.",
+            0, 'L', ln=1
         )
         pdf.set_font('DejaVu', '', 10)
+        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
         pdf.multi_cell(effective_width, 5,
             "Hlavní omezení jsou:\n"
             " - Lineární model: Klima je komplexní, nelineární systém. Předpoklad, že trend z posledních 60 let bude lineárně pokračovat dalších 1000 let, je statisticky platný, ale věcně téměř jistě nesprávný.\n"
             " - Fyzikální ignorance: Model neobsahuje žádnou fyziku klimatu (vliv CO2, oceánské proudy, body zvratu). Je to čistě statistické 'protahování čáry'.\n"
             " - Horizont extrapolace: Zatímco predikce na 10 let je nejistý odhad, predikce na 100 let je spíše cvičení a predikce na 1000 let je fikce. Slouží k demonstraci absurdit dlouhodobé lineární extrapolace.\n"
             " - Lokální vlivy: Data z jedné stanice mohou být ovlivněna např. 'městským tepelným ostrovem', který zkresluje globální klimatický signál.\n\n"
-            "Závěr: Výsledky (zejména na 100 a 1000 let) nelze brát jako předpověď, ale jako ukázku toho, co by se stalo, kdyby se svět řídil jen jednoduchým pravítkem."
+            "Závěr: Výsledky (zejména na 100 a 1000 let) nelze brát jako předpověď, ale jako ukázku toho, co by se stalo, kdyby se svět řídil jen jednoduchým pravítkem.",
+            0, 'L', ln=1
         )
         
         # --- Stránka 2: Výsledky (Tabulky) ---
         pdf.add_page()
-        effective_width = pdf.w - pdf.l_margin - pdf.r_margin # Znovu definovat pro novou stránku
+        effective_width = pdf.w - pdf.l_margin - pdf.r_margin
         
         pdf.set_font('DejaVu', 'B', 12)
-        pdf.multi_cell(effective_width, 10, '3. Kvantifikované výsledky', 0, 'L')
+        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
+        pdf.multi_cell(effective_width, 10, '3. Kvantifikované výsledky', 0, 'L', ln=1)
         pdf.ln(5)
 
         # Tabulka 1: Sklony přímek
         pdf.set_font('DejaVu', 'B', 11)
-        pdf.multi_cell(effective_width, 10, 'Vypočtené trendy (sklony regresní přímky)', 0, 'L')
+        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
+        pdf.multi_cell(effective_width, 10, 'Vypočtené trendy (sklony regresní přímky)', 0, 'L', ln=1)
         pdf.set_font('DejaVu', '', 10)
         
-        # 'cell' je pro tabulky v pořádku, protože je chceme vedle sebe
         pdf.cell(60, 7, 'Veličina', 1, 0)
-        pdf.cell(60, 7, 'Trend (jednotka/rok)', 1, 1) # 1 na konci znamená "jdi na další řádek"
+        pdf.cell(60, 7, 'Trend (jednotka/rok)', 1, 1) # '1' zde je správně, posune na další řádek
         
         pdf.cell(60, 7, 'Průměrná teplota', 1, 0)
         pdf.cell(60, 7, f"{results['tavg']['slope']:.4f} °C / rok", 1, 1)
@@ -206,16 +213,16 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
 
         # Tabulka 2: Predikce
         pdf.set_font('DejaVu', 'B', 11)
-        pdf.multi_cell(effective_width, 10, 'Extrapolované scénáře (zaokrouhleno)', 0, 'L')
+        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
+        pdf.multi_cell(effective_width, 10, 'Extrapolované scénáře (zaokrouhleno)', 0, 'L', ln=1)
         
         pdf.set_font('DejaVu', 'B', 10)
-        col_width = 45 # 4*45 = 180mm (vejde se do 190mm)
+        col_width = 45
         pdf.cell(col_width, 7, 'Rok', 1, 0, 'C')
         pdf.cell(col_width, 7, 'Teplota (°C)', 1, 0, 'C')
         pdf.cell(col_width, 7, 'Vítr (m/s)', 1, 0, 'C')
         pdf.cell(col_width, 7, 'Srážky (mm)', 1, 1, 'C')
 
-        # Data tabulky
         pdf.set_font('DejaVu', '', 10)
         for year, row in df_predictions.iterrows():
             pdf.cell(col_width, 7, str(year), 1, 0, 'C')
@@ -226,15 +233,15 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
         # --- Stránky 3, 4, 5: Grafy ---
         for var, info in variables_to_plot.items():
             pdf.add_page()
-            effective_width = pdf.w - pdf.l_margin - pdf.r_margin # Znovu definovat pro novou stránku
+            effective_width = pdf.w - pdf.l_margin - pdf.r_margin
             
             pdf.set_font('DejaVu', 'B', 12)
-            pdf.multi_cell(effective_width, 10, f"4. Graf: {info['label']}", 0, 'L')
+            # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
+            pdf.multi_cell(effective_width, 10, f"4. Graf: {info['label']}", 0, 'L', ln=1)
             pdf.ln(5)
             
-            # Vygenerovat graf a vložit ho
             img_buffer = create_plot_for_pdf(var, info, data_yearly, df_predictions, results)
-            pdf.image(img_buffer, x=10, y=None, w=190) # Šířka 190mm
+            pdf.image(img_buffer, x=10, y=None, w=190)
             img_buffer.close()
 
         # Vrácení finálního PDF jako 'bytes'
@@ -247,8 +254,7 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
 # --- Hlavní Rozhraní Aplikace Streamlit ---
 
 st.set_page_config(layout="wide", page_title="Prediktor Klimatu Brno")
-# Titulek pro ověření, že se načetla nová verze
-st.title("Prediktor Klimatu Brno (VERZE PRO PDF)") 
+st.title("Prediktor Klimatu Brno (FINÁLNÍ OPRAVA ln=1)") 
 st.caption("Tento nástroj provádí lineární regresi na historických datech a extrapoluje trendy do budoucnosti.")
 
 # Zpracování dat (volá se automaticky při startu)
@@ -312,7 +318,6 @@ if data_yearly is not None:
     st.header("Generování PDF výstupu")
     
     with st.spinner("Připravuji data pro PDF..."):
-        # PDF se teď generuje rovnou, aby bylo připraveno
         pdf_data = generate_pdf_report(data_yearly, results, models, df_predictions, variables_to_plot)
 
     if pdf_data:
