@@ -89,7 +89,7 @@ def zpracuj_data_z_githubu():
         st.success("Data úspěšně načtena a modely natrénovány.")
         return data_yearly, results, models, df_monthly
 
-# --- Funkce pro generování PDF ---
+# --- Funkce pro generování PDF (Opravená verze s `ln=1`) ---
 
 def create_plot_for_pdf(var, info, data_yearly, df_predictions, results):
     """Vytvoří Matplotlib graf a vrátí ho jako buffer v paměti."""
@@ -121,7 +121,7 @@ def create_plot_for_pdf(var, info, data_yearly, df_predictions, results):
 def generate_pdf_report(data_yearly, results, models, df_predictions, variables_to_plot):
     """
     Sestaví kompletní PDF report.
-    Tentokrát s použitím `ln=1` pro správné posouvání řádků.
+    (Verze s opravou `ln=1` pro správné odsazení řádků).
     """
     
     if not os.path.isfile(FONT_FILE) or not os.path.isfile(FONT_BOLD_FILE):
@@ -138,18 +138,14 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
         pdf.add_page()
         effective_width = pdf.w - pdf.l_margin - pdf.r_margin 
         
-        # Titulek
         pdf.set_font('DejaVu', 'B', 16)
-        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
         pdf.multi_cell(effective_width, 10, 'Analýza a predikce klimatu: Brno (stanice 11723)', 0, 'C', ln=1)
-        pdf.ln(10) # Prázdný řádek pro odsazení
+        pdf.ln(10) # Prázdný řádek
 
         # Metodika
         pdf.set_font('DejaVu', 'B', 12)
-        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
         pdf.multi_cell(effective_width, 10, '1. Metodika zpracování', 0, 'L', ln=1)
         pdf.set_font('DejaVu', '', 10)
-        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
         pdf.multi_cell(effective_width, 5, 
             "Data byla načtena z poskytnutých CSV souborů (T, F, SRA). Pro každou veličinu (teplota, vítr, srážky) "
             "byla vyfiltrována relevantní měsíční data (průměrná teplota, průměrná rychlost větru, suma srážek). "
@@ -163,16 +159,13 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
 
         # Interpretace a Omezení
         pdf.set_font('DejaVu', 'B', 12)
-        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
         pdf.multi_cell(effective_width, 10, '2. Interpretace a Omezení (Kritické)', 0, 'L', ln=1)
         pdf.set_font('DejaVu', 'B', 10)
-        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
         pdf.multi_cell(effective_width, 5, 
             "Je absolutně klíčové chápat, že tento model NENÍ reálnou klimatickou predikcí, ale pouhou lineární extrapolací.",
             0, 'L', ln=1
         )
         pdf.set_font('DejaVu', '', 10)
-        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
         pdf.multi_cell(effective_width, 5,
             "Hlavní omezení jsou:\n"
             " - Lineární model: Klima je komplexní, nelineární systém. Předpoklad, že trend z posledních 60 let bude lineárně pokračovat dalších 1000 let, je statisticky platný, ale věcně téměř jistě nesprávný.\n"
@@ -188,18 +181,16 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
         effective_width = pdf.w - pdf.l_margin - pdf.r_margin
         
         pdf.set_font('DejaVu', 'B', 12)
-        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
         pdf.multi_cell(effective_width, 10, '3. Kvantifikované výsledky', 0, 'L', ln=1)
         pdf.ln(5)
 
         # Tabulka 1: Sklony přímek
         pdf.set_font('DejaVu', 'B', 11)
-        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
         pdf.multi_cell(effective_width, 10, 'Vypočtené trendy (sklony regresní přímky)', 0, 'L', ln=1)
         pdf.set_font('DejaVu', '', 10)
         
         pdf.cell(60, 7, 'Veličina', 1, 0)
-        pdf.cell(60, 7, 'Trend (jednotka/rok)', 1, 1) # '1' zde je správně, posune na další řádek
+        pdf.cell(60, 7, 'Trend (jednotka/rok)', 1, 1)
         
         pdf.cell(60, 7, 'Průměrná teplota', 1, 0)
         pdf.cell(60, 7, f"{results['tavg']['slope']:.4f} °C / rok", 1, 1)
@@ -213,7 +204,6 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
 
         # Tabulka 2: Predikce
         pdf.set_font('DejaVu', 'B', 11)
-        # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
         pdf.multi_cell(effective_width, 10, 'Extrapolované scénáře (zaokrouhleno)', 0, 'L', ln=1)
         
         pdf.set_font('DejaVu', 'B', 10)
@@ -236,7 +226,6 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
             effective_width = pdf.w - pdf.l_margin - pdf.r_margin
             
             pdf.set_font('DejaVu', 'B', 12)
-            # ----- OPRAVA ZDE: Přidán parametr ln=1 -----
             pdf.multi_cell(effective_width, 10, f"4. Graf: {info['label']}", 0, 'L', ln=1)
             pdf.ln(5)
             
@@ -254,7 +243,7 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
 # --- Hlavní Rozhraní Aplikace Streamlit ---
 
 st.set_page_config(layout="wide", page_title="Prediktor Klimatu Brno")
-st.title("Prediktor Klimatu Brno (FINÁLNÍ OPRAVA ln=1)") 
+st.title("Prediktor Klimatu Brno (v_sloupce)") # Verze pro ověření
 st.caption("Tento nástroj provádí lineární regresi na historických datech a extrapoluje trendy do budoucnosti.")
 
 # Zpracování dat (volá se automaticky při startu)
@@ -295,8 +284,20 @@ if data_yearly is not None:
     df_predictions.index.name = 'Year'
     df_predictions_rounded = df_predictions.round(2)
 
+    # ----- ZMĚNA DLE POŽADAVKU: Přejmenování sloupců pro zobrazení -----
+    df_display = df_predictions_rounded.copy()
+    df_display.index.name = "Rok" # Přejmenování indexu
+    df_display = df_display.rename(
+        columns={
+            "pred_tavg": "Predikce teploty [°C]",
+            "pred_wspd": "Predikce rychlost větru [m/s]",
+            "pred_prcp": "Predikce množství srážek [mm]"
+        }
+    )
+    # ----- KONEC ZMĚNY -----
+
     st.header("Interaktivní predikce / Scénáře")
-    st.dataframe(df_predictions_rounded, use_container_width=True)
+    st.dataframe(df_display, use_container_width=True) # Zobrazení přejmenované tabulky
     st.warning("Pamatujte: Predikce na 100 a 1000 let jsou čistě hypotetická lineární extrapolace a nedávají reálný vědecký smysl. Slouží k demonstraci limitů metody.")
 
     # Definice proměnných pro grafy
@@ -306,11 +307,25 @@ if data_yearly is not None:
         'prcp': {'unit': 'mm', 'label': 'Celkové roční srážky'}
     }
 
-    # Ukázkový graf
-    st.subheader("Ukázkový graf (všechny budou v PDF)")
-    with st.spinner("Generuji ukázkový graf teploty..."):
-        fig_t = create_plot_for_pdf('tavg', variables_to_plot['tavg'], data_yearly, df_predictions, results)
-        st.image(fig_t, caption="Vývoj a extrapolace průměrné roční teploty", use_column_width=True)
+    # Zobrazení grafů v záložkách
+    st.subheader("Interaktivní grafy (všechny budou v PDF)")
+
+    tab_t, tab_w, tab_p = st.tabs(["Graf Teplota", "Graf Vítr", "Graf Srážky"])
+
+    with tab_t:
+        with st.spinner("Generuji graf teploty..."):
+            fig_t = create_plot_for_pdf('tavg', variables_to_plot['tavg'], data_yearly, df_predictions, results)
+            st.image(fig_t, caption="Vývoj a extrapolace průměrné roční teploty", use_column_width=True)
+
+    with tab_w:
+        with st.spinner("Generuji graf větru..."):
+            fig_w = create_plot_for_pdf('wspd', variables_to_plot['wspd'], data_yearly, df_predictions, results)
+            st.image(fig_w, caption="Vývoj a extrapolace průměrné roční rychlosti větru", use_column_width=True)
+
+    with tab_p:
+        with st.spinner("Generuji graf srážek..."):
+            fig_p = create_plot_for_pdf('prcp', variables_to_plot['prcp'], data_yearly, df_predictions, results)
+            st.image(fig_p, caption="Vývoj a extrapolace celkových ročních srážek", use_column_width=True)
         
     st.divider()
     
