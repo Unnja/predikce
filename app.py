@@ -163,9 +163,14 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
 
         # Interpretace a Omezení
         pdf.set_font('DejaVu', 'B', 12)
+       # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+        pdf.multi_cell(effective_width, 10, 'Analýza a predikce klimatu: Brno (stanice 11723)', 0, 'C')
+        pdf.ln(10)
+
+        # Metodika
+        pdf.set_font('DejaVu', 'B', 12)
         # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
-        pdf.multi_cell(effective_width, 10, '2. Interpretace a Omezení (Kritické)', 0, 'L')
-        pdf.set_font('DejaVu', 'B', 10)
+        pdf.multi_cell(effective_width, 10, '1. Metodika zpracování', 0, 'L')
         
         pdf.multi_cell(effective_width, 5, 
             "Je absolutně klíčové chápat, že tento model NENÍ reálnou klimatickou predikcí, ale pouhou lineární extrapolací."
