@@ -169,12 +169,12 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
         )
         pdf.set_font('DejaVu', '', 10)
         
+        # ----- OPRAVA ZDE: Smazal jsem to osamocené 'C' -----
         pdf.multi_cell(effective_width, 5,
             "Hlavní omezení jsou:\n"
             " - Lineární model: Klima je komplexní, nelineární systém. Předpoklad, že trend z posledních 60 let bude lineárně pokračovat dalších 1000 let, je statisticky platný, ale věcně téměř jistě nesprávný.\n"
             " - Fyzikální ignorance: Model neobsahuje žádnou fyziku klimatu (vliv CO2, oceánské proudy, body zvratu). Je to čistě statistické 'protahování čáry'.\n"
             " - Horizont extrapolace: Zatímco predikce na 10 let je nejistý odhad, predikce na 100 let je spíše cvičení a predikce na 1000 let je fikce. Slouží k demonstraci absurdit dlouhodobé lineární extrapolace.\n"
-C
             " - Lokální vlivy: Data z jedné stanice mohou být ovlivněna např. 'městským tepelným ostrovem', který zkresluje globální klimatický signál.\n\n"
             "Závěr: Výsledky (zejména na 100 a 1000 let) nelze brát jako předpověď, ale jako ukázku toho, co by se stalo, kdyby se svět řídil jen jednoduchým pravítkem."
         )
@@ -232,7 +232,6 @@ C
             pdf.image(img_buffer, x=10, y=None, w=190)
             img_buffer.close()
 
-        # ----- FINÁLNÍ OPRAVA ZDE -----
         # Návrat PDF dat - explicitně jako bytes a s destinací 'S' (string/bytes)
         return bytes(pdf.output(dest='S'))
 
@@ -308,7 +307,7 @@ if data_yearly is not None:
     if pdf_data:
         st.download_button(
             label="Stáhnout kompletní zprávu jako PDF",
-            data=pdf_data, # Teď už by to měl být 100% bytes
+            data=pdf_data, 
             file_name=f"report_klima_brno_{current_year}.pdf",
             mime="application/pdf"
         )
