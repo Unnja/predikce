@@ -141,12 +141,14 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
         effective_width = pdf.w - pdf.l_margin - pdf.r_margin
         
         pdf.set_font('DejaVu', 'B', 16)
-        pdf.cell(0, 10, 'Analýza a predikce klimatu: Brno (stanice 11723)', 0, 1, 'C')
+        # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+        pdf.multi_cell(effective_width, 10, 'Analýza a predikce klimatu: Brno (stanice 11723)', 0, 'C')
         pdf.ln(10)
 
         # Metodika
         pdf.set_font('DejaVu', 'B', 12)
-        pdf.cell(0, 10, '1. Metodika zpracování', 0, 1)
+        # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+        pdf.multi_cell(effective_width, 10, '1. Metodika zpracování', 0, 'L')
         pdf.set_font('DejaVu', '', 10)
         
         pdf.multi_cell(effective_width, 5, 
@@ -161,7 +163,8 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
 
         # Interpretace a Omezení
         pdf.set_font('DejaVu', 'B', 12)
-        pdf.cell(0, 10, '2. Interpretace a Omezení (Kritické)', 0, 1)
+        # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+        pdf.multi_cell(effective_width, 10, '2. Interpretace a Omezení (Kritické)', 0, 'L')
         pdf.set_font('DejaVu', 'B', 10)
         
         pdf.multi_cell(effective_width, 5, 
@@ -169,7 +172,6 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
         )
         pdf.set_font('DejaVu', '', 10)
         
-        # ----- OPRAVA ZDE: Smazal jsem to osamocené 'C' -----
         pdf.multi_cell(effective_width, 5,
             "Hlavní omezení jsou:\n"
             " - Lineární model: Klima je komplexní, nelineární systém. Předpoklad, že trend z posledních 60 let bude lineárně pokračovat dalších 1000 let, je statisticky platný, ale věcně téměř jistě nesprávný.\n"
@@ -181,14 +183,18 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
         
         # --- Stránka 2: Výsledky (tabulky) ---
         pdf.add_page()
+        # Znovu definujeme šířku pro novou stránku
+        effective_width = pdf.w - pdf.l_margin - pdf.r_margin
         
         pdf.set_font('DejaVu', 'B', 12)
-        pdf.cell(0, 10, '3. Kvantifikované výsledky', 0, 1)
+        # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+        pdf.multi_cell(effective_width, 10, '3. Kvantifikované výsledky', 0, 'L')
         pdf.ln(5)
 
         # Tabulka 1: Sklony přímek
         pdf.set_font('DejaVu', 'B', 11)
-        pdf.cell(0, 10, 'Vypočtené trendy (sklony regresní přímky)', 0, 1)
+        # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+        pdf.multi_cell(effective_width, 10, 'Vypočtené trendy (sklony regresní přímky)', 0, 'L')
         pdf.set_font('DejaVu', '', 10)
         pdf.cell(60, 7, 'Veličina', 1, 0)
         pdf.cell(60, 7, 'Trend (jednotka/rok)', 1, 1)
@@ -205,7 +211,8 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
 
         # Tabulka 2: Predikce
         pdf.set_font('DejaVu', 'B', 11)
-        pdf.cell(0, 10, 'Extrapolované scénáře (zaokrouhleno)', 0, 1)
+        # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+        pdf.multi_cell(effective_width, 10, 'Extrapolované scénáře (zaokrouhleno)', 0, 'L')
         
         pdf.set_font('DejaVu', 'B', 10)
         col_width = 45
@@ -224,8 +231,12 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
         # --- Další stránky: Grafy ---
         for var, info in variables_to_plot.items():
             pdf.add_page()
+            # Znovu definujeme šířku pro novou stránku
+            effective_width = pdf.w - pdf.l_margin - pdf.r_margin
+            
             pdf.set_font('DejaVu', 'B', 12)
-            pdf.cell(0, 10, f"4. Graf: {info['label']}", 0, 1)
+            # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+            pdf.multi_cell(effective_width, 10, f"4. Graf: {info['label']}", 0, 'L')
             pdf.ln(5)
             
             img_buffer = create_plot_for_pdf(var, info, data_yearly, df_predictions, results)
