@@ -141,13 +141,13 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
         effective_width = pdf.w - pdf.l_margin - pdf.r_margin
         
         pdf.set_font('DejaVu', 'B', 16)
-        # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+        # ----- OPRAVA PŘEKRÝVÁNÍ: Používáme multi_cell místo cell -----
         pdf.multi_cell(effective_width, 10, 'Analýza a predikce klimatu: Brno (stanice 11723)', 0, 'C')
-        pdf.ln(10)
+        pdf.ln(10) # Přidá odsazení
 
         # Metodika
         pdf.set_font('DejaVu', 'B', 12)
-        # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+        # ----- OPRAVA PŘEKRÝVÁNÍ: Používáme multi_cell místo cell -----
         pdf.multi_cell(effective_width, 10, '1. Metodika zpracování', 0, 'L')
         pdf.set_font('DejaVu', '', 10)
         
@@ -159,18 +159,13 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
             "Pro kvantifikaci trendu byla použita metoda lineární regrese, kde nezávislou proměnnou byl rok. "
             "Tento model byl následně použit pro extrapolaci scénářů do budoucnosti."
         )
-        pdf.ln(5)
+        pdf.ln(5) # Přidá odsazení
 
         # Interpretace a Omezení
         pdf.set_font('DejaVu', 'B', 12)
-       # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
-        pdf.multi_cell(effective_width, 10, 'Analýza a predikce klimatu: Brno (stanice 11723)', 0, 'C')
-        pdf.ln(10)
-
-        # Metodika
-        pdf.set_font('DejaVu', 'B', 12)
-        # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
-        pdf.multi_cell(effective_width, 10, '1. Metodika zpracování', 0, 'L')
+        # ----- OPRAVA PŘEKRÝVÁNÍ: Používáme multi_cell místo cell -----
+        pdf.multi_cell(effective_width, 10, '2. Interpretace a Omezení (Kritické)', 0, 'L')
+        pdf.set_font('DejaVu', 'B', 10)
         
         pdf.multi_cell(effective_width, 5, 
             "Je absolutně klíčové chápat, že tento model NENÍ reálnou klimatickou predikcí, ale pouhou lineární extrapolací."
@@ -192,13 +187,13 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
         effective_width = pdf.w - pdf.l_margin - pdf.r_margin
         
         pdf.set_font('DejaVu', 'B', 12)
-        # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+        # ----- OPRAVA PŘEKRÝVÁNÍ: Používáme multi_cell místo cell -----
         pdf.multi_cell(effective_width, 10, '3. Kvantifikované výsledky', 0, 'L')
         pdf.ln(5)
 
         # Tabulka 1: Sklony přímek
         pdf.set_font('DejaVu', 'B', 11)
-        # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+        # ----- OPRAVA PŘEKRÝVÁNÍ: Používáme multi_cell místo cell -----
         pdf.multi_cell(effective_width, 10, 'Vypočtené trendy (sklony regresní přímky)', 0, 'L')
         pdf.set_font('DejaVu', '', 10)
         pdf.cell(60, 7, 'Veličina', 1, 0)
@@ -216,7 +211,7 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
 
         # Tabulka 2: Predikce
         pdf.set_font('DejaVu', 'B', 11)
-        # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+        # ----- OPRAVA PŘEKRÝVÁNÍ: Používáme multi_cell místo cell -----
         pdf.multi_cell(effective_width, 10, 'Extrapolované scénáře (zaokrouhleno)', 0, 'L')
         
         pdf.set_font('DejaVu', 'B', 10)
@@ -240,7 +235,7 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
             effective_width = pdf.w - pdf.l_margin - pdf.r_margin
             
             pdf.set_font('DejaVu', 'B', 12)
-            # ----- OPRAVA ZDE: Používáme multi_cell místo cell -----
+            # ----- OPRAVA PŘEKRÝVÁNÍ: Používáme multi_cell místo cell -----
             pdf.multi_cell(effective_width, 10, f"4. Graf: {info['label']}", 0, 'L')
             pdf.ln(5)
             
@@ -258,7 +253,7 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
 # --- Rozhraní Aplikace Streamlit (beze změny) ---
 
 st.set_page_config(layout="wide", page_title="Prediktor Klimatu Brno")
-st.title("Analýza a predikce klimatu - Brno (stanice 11723)")
+st.title("FINÁLNÍ OPRAVA - Prediktor Klimatu Brno (stanice 11723)") # Přidáno pro ověření
 st.caption("Tento nástroj provádí lineární regresi na historických datech a extrapoluje trendy do budoucnosti. Slouží jako demonstrace metody a jejích omezení.")
 
 # Zpracování dat (volá se automaticky)
