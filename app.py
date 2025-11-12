@@ -12,7 +12,10 @@ from fpdf import FPDF # Nový import
 FILE_T = "mly-0-20000-0-11723-T.csv"
 FILE_F = "mly-0-20000-0-11723-F.csv"
 FILE_SRA = "mly-0-20000-0-11723-SRA.csv"
-FONT_FILE = "DejaVuSans.ttf" # Soubor s fontem pro češtinu
+
+# ----- OPRAVA ZDE: Přidali jsme cestu k tučnému fontu -----
+FONT_FILE = "DejaVuSans.ttf" 
+FONT_BOLD_FILE = "DejaVuSans-Bold.ttf" # Soubor s TUČNÝM fontem
 
 # Ignorování varování
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
@@ -123,13 +126,16 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
     try:
         pdf = FPDF(orientation='P', unit='mm', format='A4')
         
-        # Přidání českého fontu (musí být v repozitáři!)
+        # ----- OPRAVA ZDE: Musíme přidat BĚŽNÝ i TUČNÝ styl -----
         pdf.add_font('DejaVu', '', FONT_FILE, uni=True)
+        pdf.add_font('DejaVu', 'B', FONT_BOLD_FILE, uni=True) # <-- TOTO JE TA OPRAVA
+        
+        # Nastavíme výchozí font (už můžeme bez obav)
         pdf.set_font('DejaVu', '', 10)
         
         # --- Stránka 1: Titulní strana, Metodika, Interpretace ---
         pdf.add_page()
-        pdf.set_font('DejaVu', 'B', 16)
+        pdf.set_font('DejaVu', 'B', 16) # Teď už 'B' funguje
         pdf.cell(0, 10, 'Analýza a predikce klimatu: Brno (stanice 11723)', 0, 1, 'C')
         pdf.ln(10)
 
@@ -226,14 +232,15 @@ def generate_pdf_report(data_yearly, results, models, df_predictions, variables_
         return pdf.output()
 
     except FileNotFoundError as e:
-        st.error(f"Kritická chyba PDF: Soubor s fontem `{FONT_FILE}` nenalezen! Prosím, nahrajte jej do repozitáře.")
+        # Vylepšená chybová hláška
+        st.error(f"Kritická chyba PDF: Soubor s fontem nenalezen! Chybí `DejaVuSans.ttf` nebo `DejaVuSans-Bold.ttf`. Ujisti se, že jsou oba v repozitáři.")
         st.error(e)
         return None
     except Exception as e:
         st.error(f"Došlo k chybě při generování PDF: {e}")
         return None
 
-# --- Rozhraní Aplikace Streamlit ---
+# --- Rozhraní Aplikace Streamlit (beze změny) ---
 
 st.set_page_config(layout="wide", page_title="Prediktor Klimatu Brno")
 st.title("Analýza a predikce klimatu - Brno (stanice 11723)")
@@ -309,7 +316,7 @@ if data_yearly is not None:
         )
         st.success("PDF připraveno ke stažení!")
     else:
-        st.error("Nepodařilo se vygenerovat PDF. Zkontrolujte logy aplikace a ujistěte se, že soubor s fontem je přítomen.")
+        st.error("Nepodařilo se vygenerovat PDF. Zkontrolujte logy aplikace a ujistěte se, že soubory s fonty jsou přítomny.")
 
 else:
     st.info("Čekání na data... Pokud se nic neděje, zkontrolujte chybové hlášky výše.")
